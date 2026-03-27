@@ -1,4 +1,5 @@
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
+import { useEffect } from "react";
 import { useState } from "react";
 import { Form, useActionData, useLoaderData } from "react-router";
 import { login } from "../../shopify.server";
@@ -23,6 +24,12 @@ export default function Auth() {
   const actionData = useActionData();
   const [shop, setShop] = useState("");
   const { errors } = actionData || loaderData;
+
+  useEffect(() => {
+    if (window.top !== window.self) {
+      window.top.location.href = window.location.href;
+    }
+  }, []);
 
   return (
     <AppProvider embedded={false}>
