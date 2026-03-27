@@ -53,7 +53,7 @@ export const loader = async ({ request, params }) => {
   const qrCode = {
     id: metaobject.id,
     productHandle: metaobject.product?.reference?.handle,
-    productVariantId: metaobject.productVariant?.reference?.legacyResourceId,
+    productVariant: metaobject.productVariant?.reference,
     destination: metaobject.destination?.value,
   };
 

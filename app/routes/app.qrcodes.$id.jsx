@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   useActionData,
   useLoaderData,
   useSubmit,
   useParams,
+  useRouteError,
 } from "react-router";
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
@@ -27,6 +28,8 @@ export const loader = async ({ request, params }) => {
       destination: "product",
       title: "",
       shop: session.shop,
+      qrImage: null,
+      destinationUrl: null,
     };
   }
 
@@ -35,7 +38,10 @@ export const loader = async ({ request, params }) => {
     throw new Response("QR code not found", { status: 404 });
   }
 
-  return { ...qrCode, shop: session.shop };
+  const qrImage = await getQRCodeImage(qrCode.handle, session.shop);
+  const destinationUrl = getDestinationUrl(qrCode, session.shop);
+
+  return { ...qrCode, qrImage, destinationUrl, shop: session.shop };
 };
 
 export const action = async ({ request, params }) => {
@@ -71,13 +77,9 @@ export const action = async ({ request, params }) => {
   return redirect(`/app/qrcodes/${handle}`);
 };
 
-export const ErrorBoundary = boundary.error(async (error) => {
-  console.error(error);
-  return {
-    status: "error",
-    message: error instanceof Error ? error.message : "Unknown error occurred",
-  };
-});
+export function ErrorBoundary() {
+  return boundary.error(useRouteError());
+}
 
 export default function QRCodeForm() {
   const loaderData = useLoaderData();
@@ -88,20 +90,9 @@ export default function QRCodeForm() {
 
   const [formState, setFormState] = useState(loaderData);
   const [initialFormState, setInitialFormState] = useState(loaderData);
-  const [isDirty, setIsDirty] = useState(false);
-
-  const imageRef = useRef(null);
 
   const isCreating = id === "new";
   const isEditing = !isCreating;
-
-  useEffect(() => {
-    if (formState !== initialFormState) {
-      setIsDirty(true);
-    } else {
-      setIsDirty(false);
-    }
-  }, [formState, initialFormState]);
 
   const selectProduct = async () => {
     shopify?.resourcePicker({
@@ -152,22 +143,6 @@ export default function QRCodeForm() {
     }
   };
 
-  const generateQRCode = async () => {
-    if (!formState.product) {
-      shopify?.toast.show("Please select a product first");
-      return;
-    }
-
-    try {
-      const handle = id === "new" ? generateHandle(formState.title) : id;
-      const qrImage = await getQRCodeImage(handle, formState.shop);
-      setFormState({ ...formState, qrImage });
-    } catch (error) {
-      console.error("Failed to generate QR code:", error);
-      shopify?.toast.show("Failed to generate QR code", { isError: true });
-    }
-  };
-
   const downloadQRCode = () => {
     if (!formState?.qrImage) {
       shopify?.toast.show("Please generate a QR code first");
@@ -182,17 +157,12 @@ export default function QRCodeForm() {
 
   const errors = actionData?.errors || {};
 
-  // Generate QR code after form loads (for editing)
   useEffect(() => {
-    if (isEditing && loaderData?.product && !formState?.qrImage) {
-      generateQRCode();
-    }
-  }, [isEditing, loaderData?.product]);
+    setFormState(loaderData);
+    setInitialFormState(loaderData);
+  }, [loaderData]);
 
-  const destinationUrl =
-    initialFormState?.product && initialFormState?.destination
-      ? getDestinationUrl(initialFormState, formState.shop)
-      : null;
+  const destinationUrl = formState?.destinationUrl || null;
 
   return (
     <s-page>
@@ -229,7 +199,7 @@ export default function QRCodeForm() {
           <s-form-item>
             <s-label>Product</s-label>
             {!formState.product ? (
-              <s-button onClick={selectProduct} kind="secondary">
+              <s-button type="button" onClick={selectProduct} kind="secondary">
                 Select product
               </s-button>
             ) : (
@@ -245,6 +215,7 @@ export default function QRCodeForm() {
                     )}
                     <s-text>{formState.productTitle}</s-text>
                     <s-button
+                      type="button"
                       onClick={selectProduct}
                       kind="tertiary"
                       size="small"
@@ -293,7 +264,7 @@ export default function QRCodeForm() {
                   Scan this QR code with your phone camera.
                 </s-text>
                 <s-stack>
-                  <s-button onClick={downloadQRCode} kind="secondary">
+                  <s-button type="button" onClick={downloadQRCode} kind="secondary">
                     Download QR code
                   </s-button>
                   {destinationUrl && (
@@ -315,7 +286,7 @@ export default function QRCodeForm() {
           <s-button type="submit">
             Save
           </s-button>
-          <s-button kind="tertiary" onClick={() => setFormState(initialFormState)}>
+          <s-button type="button" kind="tertiary" onClick={() => setFormState(initialFormState)}>
             Discard
           </s-button>
         </ui-save-bar>

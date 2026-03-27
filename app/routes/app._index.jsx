@@ -1,4 +1,4 @@
-import { useLoaderData } from "react-router";
+import { useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 
 import { authenticate } from "../shopify.server";
@@ -32,7 +32,11 @@ const EmptyQRCodeState = () => (
       <s-paragraph>
         Track and share QR codes that link to your products or checkout
       </s-paragraph>
-      <s-button href="/app/qrcodes/new" kind="primary">
+      <s-button
+        type="button"
+        onClick={() => window.location.assign("/app/qrcodes/new")}
+        kind="primary"
+      >
         Create QR code
       </s-button>
     </s-grid>
@@ -47,7 +51,11 @@ export default function Index() {
       <s-page-title>QR codes</s-page-title>
       
       <s-page-actions>
-        <s-button href="/app/qrcodes/new" kind="primary">
+        <s-button
+          type="button"
+          onClick={() => window.location.assign("/app/qrcodes/new")}
+          kind="primary"
+        >
           Create QR code
         </s-button>
       </s-page-actions>
@@ -106,10 +114,6 @@ export default function Index() {
   );
 }
 
-export const ErrorBoundary = boundary.error(async (error) => {
-  console.error(error);
-  return {
-    status: "error",
-    message: error instanceof Error ? error.message : "Unknown error occurred",
-  };
-});
+export function ErrorBoundary() {
+  return boundary.error(useRouteError());
+}
