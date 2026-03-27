@@ -35,18 +35,32 @@ description = "Tracks products created by the Shopify app template for developme
   [product.metafields.app.demo_info.access]
   admin = "merchant_read_write"
 
-[metaobjects.app.example]
-name = "Example"
-description = "An example metaobject definition created by this template"
+[metaobjects.app.qrcode]
+name = "QR Code"
+description = "A QR code that links to a product or checkout"
 
-  [metaobjects.app.example.access]
+  [metaobjects.app.qrcode.access]
   admin = "merchant_read_write"
 
-[metaobjects.app.example.fields.title]
+[metaobjects.app.qrcode.fields.title]
 name = "Title"
 type = "single_line_text_field"
 required = true
 
-[metaobjects.app.example.fields.description]
-name = "Description"
-type = "multi_line_text_field"
+[metaobjects.app.qrcode.fields.product]
+name = "Product"
+type = "product_reference"
+required = true
+
+[metaobjects.app.qrcode.fields.product_variant]
+name = "Product Variant"
+type = "product_variant_reference"
+
+[metaobjects.app.qrcode.fields.destination]
+name = "Destination"
+type = "single_line_text_field"
+required = true
+
+[metaobjects.app.qrcode.fields.scans]
+name = "Scans"
+type = "integer"
