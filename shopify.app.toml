@@ -54,7 +54,7 @@ required = true
 
 [metaobjects.app.qrcode.fields.product_variant]
 name = "Product Variant"
-type = "product_variant_reference"
+type = "single_line_text_field"
 
 [metaobjects.app.qrcode.fields.destination]
 name = "Destination"
@@ -63,4 +63,4 @@ required = true
 
 [metaobjects.app.qrcode.fields.scans]
 name = "Scans"
-type = "integer"
+type = "single_line_text_field"
