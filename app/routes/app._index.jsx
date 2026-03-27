@@ -32,11 +32,7 @@ const EmptyQRCodeState = () => (
       <s-paragraph>
         Track and share QR codes that link to your products or checkout
       </s-paragraph>
-      <s-button
-        type="button"
-        onClick={() => window.location.assign("/app/qrcodes/new")}
-        kind="primary"
-      >
+      <s-button href="/app/qrcodes/new" kind="primary">
         Create QR code
       </s-button>
     </s-grid>
@@ -51,11 +47,7 @@ export default function Index() {
       <s-page-title>QR codes</s-page-title>
       
       <s-page-actions>
-        <s-button
-          type="button"
-          onClick={() => window.location.assign("/app/qrcodes/new")}
-          kind="primary"
-        >
+        <s-button href="/app/qrcodes/new" kind="primary">
           Create QR code
         </s-button>
       </s-page-actions>
