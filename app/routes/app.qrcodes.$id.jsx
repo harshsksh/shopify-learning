@@ -45,6 +45,7 @@ export const loader = async ({ request, params }) => {
 };
 
 export const action = async ({ request, params }) => {
+  console.log("=== QR ACTION HANDLER ===", request.method);
   const { admin, redirect } = await authenticate.admin(request);
 
   if (request.method === "DELETE") {
@@ -55,6 +56,12 @@ export const action = async ({ request, params }) => {
   }
 
   const formData = await request.formData();
+  console.log("Form data received:", {
+    title: formData.get("title"),
+    product: formData.get("product"),
+    productVariant: formData.get("productVariant"),
+    destination: formData.get("destination"),
+  });
 
   const qrCode = {
     title: formData.get("title"),
@@ -63,17 +70,32 @@ export const action = async ({ request, params }) => {
     destination: formData.get("destination"),
   };
 
+  console.log("Validating QR code:", qrCode);
   const errors = validateQRCode(qrCode);
+  console.log("Validation errors:", errors);
 
   if (Object.keys(errors).length) {
+    console.log("Returning validation errors to UI");
     return { errors };
   }
 
   const handle =
     params.id === "new" ? generateHandle(qrCode.title) : params.id;
 
-  await saveQRCode(handle, qrCode, admin.graphql);
+  console.log("Saving QR code with handle:", handle);
+  try {
+    await saveQRCode(handle, qrCode, admin.graphql);
+    console.log("QR code saved successfully");
+  } catch (error) {
+    console.error("Save failed:", error?.message);
+    return {
+      errors: {
+        form: error?.message || "Failed to save QR code",
+      },
+    };
+  }
 
+  console.log("Redirecting to:", `/app/qrcodes/${handle}`);
   return redirect(`/app/qrcodes/${handle}`);
 };
 
@@ -95,44 +117,33 @@ export default function QRCodeForm() {
   const isEditing = !isCreating;
 
   const selectProduct = async () => {
-    shopify?.resourcePicker({
+    const result = await shopify?.resourcePicker({
       type: "product",
       action: "select",
-      onSelection: (resources) => {
-        const { selection } = resources;
-        if (selection && selection[0]) {
-          const { id, title, images } = selection[0];
-          setFormState({
-            ...formState,
-            product: id,
-            productTitle: title,
-            productImage: images[0],
-          });
-        }
-      },
+      multiple: false,
     });
+
+    const selection = Array.isArray(result)
+      ? result
+      : result?.selection || [];
+
+    if (selection[0]) {
+      const { id, title, images } = selection[0];
+      setFormState((prev) => ({
+        ...prev,
+        product: id,
+        productTitle: title,
+        productImage: images?.[0],
+      }));
+    }
   };
 
   const handleTitleChange = (e) => {
-    setFormState({ ...formState, title: e.target.value });
+    setFormState((prev) => ({ ...prev, title: e.target.value }));
   };
 
   const handleDestinationChange = (e) => {
-    setFormState({ ...formState, destination: e.target.value });
-  };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-
-    const submitData = {
-      title: formState.title,
-      product: formState.product,
-      productVariant: formState.productVariant || "",
-      destination: formState.destination,
-    };
-
-    submit(submitData, { method: "post" });
-    setInitialFormState(formState);
+    setFormState((prev) => ({ ...prev, destination: e.target.value }));
   };
 
   const handleDelete = async () => {
@@ -182,16 +193,33 @@ export default function QRCodeForm() {
         )}
       </s-page-actions>
 
-      <form onSubmit={handleSave}>
+      <s-form
+        method="post"
+        onSubmit={(e) => {
+          console.log("=== FORM SUBMIT ===", {
+            title: formState.title,
+            product: formState.product,
+            destination: formState.destination,
+          });
+          setInitialFormState(formState);
+        }}
+      >
+        <input type="hidden" name="product" value={formState.product || ""} />
+        <input
+          type="hidden"
+          name="productVariant"
+          value={formState.productVariant || ""}
+        />
         <s-section>
           <s-form-item>
-            <s-label htmlFor="title">Title</s-label>
-            <s-text-field
+            <label htmlFor="title">Title</label>
+            <input
               id="title"
+              name="title"
               type="text"
               value={formState.title || ""}
               onChange={handleTitleChange}
-              error={errors.title ? errors.title : undefined}
+              style={{ width: "100%", padding: "8px", marginTop: "6px" }}
             />
             {errors.title && <s-text color="critical">{errors.title}</s-text>}
           </s-form-item>
@@ -232,19 +260,27 @@ export default function QRCodeForm() {
           </s-form-item>
 
           <s-form-item>
-            <s-label htmlFor="destination">Destination</s-label>
-            <s-select
+            <label htmlFor="destination">Destination</label>
+            <select
               id="destination"
+              name="destination"
               value={formState.destination || "product"}
               onChange={handleDestinationChange}
+              style={{ width: "100%", padding: "8px", marginTop: "6px" }}
             >
               <option value="product">Product page</option>
               <option value="cart">Add to cart</option>
-            </s-select>
+            </select>
             {errors.destination && (
               <s-text color="critical">{errors.destination}</s-text>
             )}
           </s-form-item>
+
+          {errors.form && (
+            <s-form-item>
+              <s-text color="critical">{errors.form}</s-text>
+            </s-form-item>
+          )}
 
           {destinationUrl && (
             <s-form-item>
@@ -282,15 +318,21 @@ export default function QRCodeForm() {
           </s-box>
         </s-section>
 
-        <ui-save-bar>
-          <s-button type="submit">
-            Save
-          </s-button>
-          <s-button type="button" kind="tertiary" onClick={() => setFormState(initialFormState)}>
-            Discard
-          </s-button>
-        </ui-save-bar>
-      </form>
+        <s-section>
+          <s-stack direction="inline" gap="small-200">
+            <s-button type="submit" kind="primary">
+              Save
+            </s-button>
+            <s-button
+              type="button"
+              kind="tertiary"
+              onClick={() => setFormState(initialFormState)}
+            >
+              Discard
+            </s-button>
+          </s-stack>
+        </s-section>
+      </s-form>
     </s-page>
   );
 }

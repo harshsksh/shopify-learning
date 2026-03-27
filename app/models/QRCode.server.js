@@ -156,8 +156,8 @@ export function getDestinationUrl(qrCode, shop) {
 export async function saveQRCode(handle, formData, graphql) {
   const response = await graphql(
     `
-      mutation SaveQRCode($input: MetaobjectUpsertInput!) {
-        metaobjectUpsert(input: $input) {
+      mutation SaveQRCode($handle: MetaobjectHandleInput!, $metaobject: MetaobjectUpsertInput!) {
+        metaobjectUpsert(handle: $handle, metaobject: $metaobject) {
           metaobject {
             id
             handle
@@ -171,9 +171,11 @@ export async function saveQRCode(handle, formData, graphql) {
     `,
     {
       variables: {
-        input: {
+        handle: {
           type: METAOBJECT_TYPE,
-          handle: handle,
+          handle,
+        },
+        metaobject: {
           fields: [
             {
               key: "title",
